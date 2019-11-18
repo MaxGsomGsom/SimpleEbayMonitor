@@ -5,7 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
+using System.Threading;
 
 namespace SimpleEbayMonitor
 {
@@ -24,11 +24,6 @@ namespace SimpleEbayMonitor
 
         static void Main()
         {
-            Task.Run(Action).Wait();
-        }
-
-        private static async Task Action()
-        {
             Console.WriteLine("Enter search query (ex. 'macbook pro'):");
             var query = Console.ReadLine();
 
@@ -46,7 +41,7 @@ namespace SimpleEbayMonitor
 
             while (!(Console.KeyAvailable && Console.ReadKey().Key == ConsoleKey.Escape))
             {
-                await Task.Delay(TimeSpan.FromSeconds(DelaySeconds));
+                Thread.Sleep(TimeSpan.FromSeconds(DelaySeconds));
 
                 string page;
                 try
