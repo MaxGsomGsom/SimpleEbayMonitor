@@ -68,12 +68,7 @@ namespace SimpleEbayMonitor
                 File.AppendAllLines(ItemsFile, newItems);
                 Console.WriteLine($"New items loaded: {newItems.Length}");
 
-                if (newItems.Length > TooManyItemsCount)
-                {
-                    Console.WriteLine("Too many new items. Skipping.");
-                    continue;
-                }
-
+                int shownItems = 0;
                 foreach (var newItem in newItems)
                 {
                     var price = double.Parse(newPrices[newItem]
@@ -83,8 +78,15 @@ namespace SimpleEbayMonitor
 
                     if (price <= maxPrice)
                     {
+                        shownItems++;
                         Console.Beep();
                         OpenUrl(newItem);
+                    }
+
+                    if (shownItems > TooManyItemsCount)
+                    {
+                        Console.WriteLine("Too many new items. Skipping.");
+                        break;
                     }
                 }
             }
