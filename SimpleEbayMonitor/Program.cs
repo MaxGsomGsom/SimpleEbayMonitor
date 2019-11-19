@@ -39,7 +39,7 @@ namespace SimpleEbayMonitor
                 Console.WriteLine($"Initial items loaded: {items.Count}");
             }
 
-            while (!(Console.KeyAvailable && Console.ReadKey().Key == ConsoleKey.Escape))
+            while (true)
             {
                 Thread.Sleep(TimeSpan.FromSeconds(DelaySeconds));
 
