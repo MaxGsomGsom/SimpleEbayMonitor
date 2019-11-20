@@ -10,32 +10,56 @@ using System.Threading;
 
 namespace SimpleEbayMonitor
 {
-    class Program
+    public class Program
     {
-        private static readonly string ItemsFile = "Items.txt";
-        private static readonly string SearchUri = "https://www.ebay.com/sch/i.html?_sop=10&rt=nc&LH_BIN=1&_udhi=price&_nkw=query";
-        private static readonly string Pattern = "https://www.ebay.com/itm/[^\"]+";
+        private static string Query = "MacBook+Pro+2018";
+        private static int MaxItems = 5;
+        private static int MinPrice = 10000;
+        private static int MaxPrice = 60000;
+        private static TimeSpan Delay = TimeSpan.FromSeconds(3);
 
-        // Parameters
-        private const int MaxShowItemsNumber = 5;
-        private static readonly TimeSpan Delay = TimeSpan.FromSeconds(5);
+        private const string QueryArgName = "query";
+        private const string MinPriceArgName = "min_price";
+        private const string MaxPriceArgName = "max_price";
+        private const string DelayArgName = "delay";
+        private const string MaxItemsArgName = "max_items";
 
-        static void Main()
+        private static readonly string ItemsFile = "items.txt";
+
+        private static readonly string ItemUriPattern = "https://www.ebay.com/itm/[^\"]+";
+
+        private static readonly string SearchUriPattern = "https://www.ebay.com/sch/i.html" +
+                                                   "?_sop=10" +
+                                                   "&rt=nc" +
+                                                   "&LH_BIN=1" +
+                                                   $"&_udlo={MinPriceArgName}" +
+                                                   $"&_udhi={MaxPriceArgName}" +
+                                                   $"&_nkw={QueryArgName}";
+
+        private static string HelpText => "==================================================\n" +
+                                                  "Arguments and current values:\n\n" +
+                                                  $"-{QueryArgName}={Query} - search query\n" +
+                                                  $"-{MinPriceArgName}={MinPrice} - price in currency of your Ebay account\n" +
+                                                  $"-{MaxPriceArgName}={MaxPrice} - price in currency of your Ebay account\n" +
+                                                  $"-{DelayArgName}={Delay.Seconds} - delay between requests in seconds\n" +
+                                                  $"-{MaxItemsArgName}={MaxItems} - max number of items to show after new request\n" +
+                                                  "==================================================\n";
+
+        static void Main(string[] args)
         {
-            Console.WriteLine("Enter search query (ex. 'macbook pro 2018'):");
-            var query = ReadLine(s => s);
-            var uri = SearchUri.Replace("query", query);
+            if (!ParseArguments(args)) return;
 
-            Console.WriteLine("Enter max price in RUB (ex. 60000):");
-            var price = ReadLine(int.Parse);
-            uri = uri.Replace("price", price.ToString());
+            var uri = SearchUriPattern
+                .Replace(QueryArgName, Query)
+                .Replace(MinPriceArgName, MinPrice.ToString())
+                .Replace(MaxPriceArgName, MaxPrice.ToString());
 
             var items = new List<string>();
 
             if (File.Exists(ItemsFile))
             {
                 items.AddRange(File.ReadAllLines(ItemsFile));
-                Console.WriteLine($"Initial items loaded: {items.Count}");
+                Console.WriteLine($"Initial items loaded from file: {items.Count}");
             }
 
             while (true)
@@ -53,7 +77,7 @@ namespace SimpleEbayMonitor
                     continue;
                 }
 
-                var newItems = Regex.Matches(page, Pattern)
+                var newItems = Regex.Matches(page, ItemUriPattern)
                     .Select(e => e.Value)
                     .Distinct().Except(items).ToArray();
 
@@ -61,10 +85,10 @@ namespace SimpleEbayMonitor
                 File.AppendAllLines(ItemsFile, newItems);
                 Console.WriteLine($"New items loaded: {newItems.Length}");
 
-                if (newItems.Length > MaxShowItemsNumber)
+                if (newItems.Length > MaxItems)
                 {
-                    newItems = newItems.Take(MaxShowItemsNumber).ToArray();
-                    Console.WriteLine($"Too many new items. First {MaxShowItemsNumber} will be shown.");
+                    newItems = newItems.Take(MaxItems).ToArray();
+                    Console.WriteLine($"Too many new items. First {MaxItems} will be shown.");
                 }
 
                 foreach (var newItem in newItems)
@@ -76,16 +100,41 @@ namespace SimpleEbayMonitor
             }
         }
 
-        private static T ReadLine<T>(Func<string, T> parse)
+        private static bool ParseArguments(string[] args)
         {
-            while (true)
+            try
             {
-                try
-                {
-                    return parse(Console.ReadLine());
-                }
-                catch { }
+                var tempQuery = args.FirstOrDefault(e => e.Contains(QueryArgName))?.Split('=').LastOrDefault();
+                Query = string.IsNullOrWhiteSpace(tempQuery) ? Query : tempQuery;
+                if (string.IsNullOrWhiteSpace(Query)) throw new ArgumentOutOfRangeException(QueryArgName);
+
+                var tempMinPrice = args.FirstOrDefault(e => e.Contains(MinPriceArgName))?.Split('=').LastOrDefault();
+                MinPrice = string.IsNullOrWhiteSpace(tempMinPrice) ? MinPrice : int.Parse(tempMinPrice);
+                if (MinPrice < 1) throw new ArgumentOutOfRangeException(MinPriceArgName);
+
+                var tempMaxPrice = args.FirstOrDefault(e => e.Contains(MaxPriceArgName))?.Split('=').LastOrDefault();
+                MaxPrice = string.IsNullOrWhiteSpace(tempMaxPrice) ? MaxPrice : int.Parse(tempMaxPrice);
+                if (MaxPrice <= MinPrice) throw new ArgumentOutOfRangeException(MaxPriceArgName);
+
+                var tempDelay = args.FirstOrDefault(e => e.Contains(DelayArgName))?.Split('=').LastOrDefault();
+                Delay = string.IsNullOrWhiteSpace(tempDelay) ? Delay : TimeSpan.FromSeconds(int.Parse(tempDelay));
+                if (Delay.Seconds < 1) throw new ArgumentOutOfRangeException(DelayArgName);
+
+                var tempMaxItems = args.FirstOrDefault(e => e.Contains(MaxItemsArgName))?.Split('=').LastOrDefault();
+                MaxItems = string.IsNullOrWhiteSpace(tempMaxItems) ? MaxItems : int.Parse(tempMaxItems);
+                if (MaxItems < 1) throw new ArgumentOutOfRangeException(MaxItemsArgName);
             }
+            catch (Exception e)
+            {
+                Console.WriteLine($"Incorrect input arguments: {e.Message}");
+                return false;
+            }
+            finally
+            {
+                Console.WriteLine(HelpText);
+            }
+
+            return true;
         }
 
         private static void OpenUrl(string url)
