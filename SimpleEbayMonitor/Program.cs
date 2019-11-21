@@ -16,7 +16,8 @@ namespace SimpleEbayMonitor
         private static int MaxItems = 5;
         private static int MinPrice = 10000;
         private static int MaxPrice = 60000;
-        private static TimeSpan Delay = TimeSpan.FromSeconds(3);
+        private static TimeSpan Delay = TimeSpan.FromSeconds(5);
+        private static int Iteration;
 
         private const string QueryArgName = "query";
         private const string MinPriceArgName = "min_price";
@@ -83,7 +84,7 @@ namespace SimpleEbayMonitor
 
                 items.AddRange(newItems);
                 File.AppendAllLines(ItemsFile, newItems);
-                Console.WriteLine($"New items loaded: {newItems.Length}");
+                Console.Write($"Iteration {++Iteration}. New items loaded: {newItems.Length}.{(newItems.Any() ? '\n' : '\r')}");
 
                 if (newItems.Length > MaxItems)
                 {
